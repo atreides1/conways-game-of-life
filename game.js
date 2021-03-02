@@ -1,49 +1,61 @@
+/* 
+    Conway's game of life is a cellular automata simulation created in the 70s by mathematician John Conway.
+    The game consists of a 2D grid of cells, in which each cell can either be "dead" or "alive", and marked accordingly. 
+    As time goes on, the state of each cell changes depending on its surrounding environment.
+    
+    The rules of the "game" are simple:
+        1) A live cell with two or three neighbors (horizontal, vertical, or adjacent cells) survives.
+        2) A cell with less than two live neighbors or more than three live neighbors dies.
+        3) Any cell (dead or alive) with three alive neighbors lives.
+
+    Fun fact: Since this was before computers were widely available,
+        John Conway would plot the cells by hand. Just imagine how convenient a computer must have been!
+*/
+
 //canvas setup
-const c = document.getElementById("gameOfLife");
-const ctx = c.getContext("2d");
-let dpr = window.devicePixelRatio; // Change to 1 on retina screens to see blurry canvas.
+const canvas = document.getElementById("gameOfLife");
+const context = canvas.getContext("2d");
+let dpr = window.devicePixelRatio; // For retina screens.
 
 //global variables
-
-let numCols = 39; //want these to depend on height
-let numRows = 18; //and width, respectively
-let cellSize = numCols * numRows / 14;
+let COLS, ROWS, CELL_SIZE;
 
 let cells = []; //array for storing Cell objects
 let nextCellState = null; //to save game state between updates
 let paused = false;
 let game = null;
+
 //util funcs
-function fixBlur()
-{
+function fixBlur() {
     let style =
     { //get css style width + height of canvas
         //use slice to get rid of 'px,' and + to convert to int
-        height() { return +getComputedStyle(c).getPropertyValue('height').slice(0,-2); },
-        width() { return +getComputedStyle(c).getPropertyValue('width').slice(0,-2); },
+        height() { return +getComputedStyle(canvas).getPropertyValue('height').slice(0,-2); },
+        width() { return +getComputedStyle(canvas).getPropertyValue("width").slice(0, -2); },
     }
     //set correct attributes
-    c.setAttribute('width', style.width() * dpr);
-    c.setAttribute('height', style.height() * dpr);
+    canvas.setAttribute("width", style.width() * dpr);
+    canvas.setAttribute("height", style.height() * dpr);
 }
 
-function resize(c) //from webGls fundamentals page
-{
+// resize the canvas on window resize
+//from webGls fundamentals page
+function resize() {
     //the size the browser displays the canvas
-    let displayWidth = c.clientWidth;
-    let displayHeight = c.clientHeight;
+    let displayWidth = canvas.clientWidth;
+    let displayHeight = canvas.clientHeight;
 
     //if the canvas is not the same size, make it so
-    if (c.width !== displayWidth || c.height !== displayHeight)
+    if (canvas.width !== displayWidth || canvas.height !== displayHeight)
     {
-        c.width = displayWidth;
-        c.height = displayHeight;
-        fixBlur()
+        canvas.width = displayWidth;
+        canvas.height = displayHeight;
+        fixBlur();
+        createGrid();
     }
 }
 
-function pause(e)
-{
+function pause(e) {
     if (!paused)
     {
         console.log("Paused!");
@@ -52,24 +64,24 @@ function pause(e)
     } else {
         game = setTimeout( () => {
             window.requestAnimationFrame(() => main());
-        }, 500);
+        }, 400);
         paused = false;
     }
 }
-
+// event listeners
 window.addEventListener('resize', resize, false);
 window.addEventListener('keydown', pause, false);
 
 
-///////////////////////////////////////////////////
-///////////////////////////////////////////////////
-///////////////////////////////////////////////////
+//////////////////////////////////////////////////
+//////////////////  The Game   ///////////////////
+//////////////////////////////////////////////////
 
 //check if cell at pos (i,j) is alive or not
 //also used to filter out border cells
-function isAlive(i, j)
+function checkState(i, j)
 {
-    if (i < 0 || j < 0 || i >= numCols || j >= numRows)
+    if (i < 0 || j < 0 || i >= ROWS || j >= COLS)
     {
         return 0;
     }
@@ -78,14 +90,20 @@ function isAlive(i, j)
 
 function createGrid()
 {
-    for (let i = 0; i < numCols; i++)
-    {
+    // initialize grid
+    // https://gist.github.com/xon52/fb895e33d64a8d322da165d158fa11b2
+    ROWS = 50;
+    COLS = Math.floor(canvas.height / canvas.width * ROWS);
+    console.log(COLS)
+    CELL_SIZE = Math.floor(canvas.width / ROWS);
+
+    for (let i=0; i<ROWS; i++) {
         let row = [];
-        for (let j = 0; j < numRows; j++)
-        {
-            row.push(Math.round(Math.random()));
+        for (let j=0; j<COLS; j++) {
+            let state = Math.random() > 0.8 ? 1 : 0;
+            row.push(state);
         }
-        cells.push(row);
+        cells.push(row)
     }
     console.log(cells);
     nextCellState = [...cells];
@@ -96,11 +114,9 @@ function main()
     fixBlur();
 
     //update our *future* cell state
-    for (let i = 0; i < numCols; i++)
-    {
-        for (let j = 0; j < numRows; j++)
-        {
-            let numOfNeighborsAlive = isAlive(i-1, j-1) + isAlive(i-1, j) + isAlive(i-1,j+1) + isAlive(i,j-1) + isAlive(i,j+1) + isAlive(i+1,j-1) + isAlive(i+1,j) + isAlive(i+1,j+1);
+    for (let i = 0; i < ROWS; i++) {
+        for (let j = 0; j < COLS; j++) {
+            let numOfNeighborsAlive = checkState(i-1, j-1) + checkState(i-1, j) + checkState(i-1,j+1) + checkState(i,j-1) + checkState(i,j+1) + checkState(i+1,j-1) + checkState(i+1,j) + checkState(i+1,j+1);
 
             if (numOfNeighborsAlive === 3)
             {
@@ -119,15 +135,15 @@ function main()
             }
         }
     }
-    //draw viable cells
-    for (let i = 0; i < numCols; i++)
+    // //draw viable cells
+    for (let i = 0; i < ROWS; i++)
     {
-        for (let j = 0; j < numRows; j++)
+        for (let j = 0; j < COLS; j++)
         {
             if (nextCellState[i][j] === 1)
             {
-                ctx.fillStyle = 'rgb(' + Math.floor(i/numCols * 255) + ',' + Math.floor(j/numRows * 255 -10) + ', 90)';
-                ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
+                context.fillStyle = 'rgb(' + Math.floor(i/ROWS * 255) + ',' + Math.floor(j/COLS * 255 -10) + ', 90)';
+                context.fillRect(i * CELL_SIZE, j * CELL_SIZE, CELL_SIZE, CELL_SIZE);
             }
             cells[i][j] = nextCellState[i][j];
         }
@@ -136,10 +152,11 @@ function main()
 
     game = setTimeout( () => {
         window.requestAnimationFrame(() => main());
-    }, 500)
+    }, 400)
 }
 
 // Now for the game of life!
-fixBlur()
+// fixBlur()
+resize();
 createGrid();
 window.requestAnimationFrame(main);
